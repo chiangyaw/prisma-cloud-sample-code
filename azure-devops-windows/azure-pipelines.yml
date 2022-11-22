@@ -1,0 +1,48 @@
+# Docker
+# Build a Docker image
+# https://docs.microsoft.com/azure/devops/pipelines/languages/docker
+
+trigger:
+- main
+
+resources:
+- repo: self
+
+variables:
+  tag: '$(Build.BuildId)'
+  image_name: 'bechong-webserver'
+  PCC_USER: '<console_username>'
+  PCC_PASS: '<console_password>'
+  PCC_CONSOLE_URL: '<console_url>'
+
+stages:
+- stage: PrismaComputeScan
+  displayName: Prisma Compute Scan
+  jobs:  
+
+  - job: ComputeScan
+    displayName: Compute Scan
+    pool:
+      vmImage: 'windows-2019'
+    steps:
+    - task: Docker@2
+      displayName: Build an image
+      inputs:
+        command: 'build'
+        Dockerfile: 'Dockerfile'
+        repository: $(image_name)
+        tags: |
+          $(tag)
+    - task: CmdLine@2
+      inputs:
+        script: |
+          echo Image name
+          echo $(image_name)
+          echo Tag
+          echo $(tag)
+    - task: CmdLine@2
+      inputs:
+        script: |
+          curl -k -u 3317/ -u $(PCC_USER):$(PCC_PASS) $(PCC_CONSOLE_URL)/api/v1/util/windows/twistcli.exe > twistcli.exe
+          twistcli.exe images scan  --address $(PCC_CONSOLE_URL) -u $(PCC_USER) -p $(PCC_PASS) --details $(image_name):$(tag)
+      displayName: 'Twistcli scan'
